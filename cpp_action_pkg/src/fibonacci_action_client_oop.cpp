@@ -63,21 +63,23 @@ public:
   void send_goal() {
     using namespace std::placeholders;
 
-    // timer cancel required for send goal once
+    // Cancels the timer (so it is only called once).
     m_timer->cancel();
 
+    // Waits for the action server to come up.
     if (!m_action_client->wait_for_action_server(std::chrono::seconds(10))) {
       RCLCPP_ERROR(get_logger(), "Action server not available after waiting");
       rclcpp::shutdown();
     }
 
+    // Instantiates a new Fibonacci::Goal.
     auto goal_msg = Fibonacci::Goal();
     goal_msg.order = 10;
 
     auto send_goal_options =
         rclcpp_action::Client<Fibonacci>::SendGoalOptions();
 
-    // TODO(Swimming): Cancel Logic
+    // Sets the response, feedback, and result callbacks.
     send_goal_options.goal_response_callback =
         std::bind(&FBActionClient::goal_response_callback, this, _1);
     send_goal_options.feedback_callback =
@@ -85,9 +87,11 @@ public:
     send_goal_options.result_callback =
         std::bind(&FBActionClient::result_callback, this, _1);
 
+    // Sends the goal to the server.
     m_action_client->async_send_goal(goal_msg, send_goal_options);
   }
 
+  // When the server receives and accepts the goal, it will send a response to the client. That response is handled by goal_response_callback
   void goal_response_callback(const GoalHandleFibonacci::SharedPtr & goal_handle)
   {
     if (!goal_handle) {
@@ -97,6 +101,7 @@ public:
     }
   }
 
+  // Assuming the goal was accepted by the server, it will start processing. Any feedback to the client will be handled by the feedback_callback
   void
   feedback_callback(GoalHandleFibonacci::SharedPtr,
                     const std::shared_ptr<const Fibonacci::Feedback> feedback) {
@@ -106,6 +111,7 @@ public:
       RCLCPP_INFO(get_logger(), "%d", number);
   }
 
+  // When the server is finished processing, it will return a result to the client. The result is handled by the result_callback
   void result_callback(const GoalHandleFibonacci::WrappedResult &result) {
     switch (result.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:

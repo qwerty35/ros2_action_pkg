@@ -17,7 +17,6 @@
 
 #include "custom_interfaces/action/fibonacci.hpp"
 #include "rclcpp/rclcpp.hpp"
-// TODO(jacobperron): Remove this once it is included as part of 'rclcpp.hpp'
 #include "rclcpp_action/rclcpp_action.hpp"
 
 using Fibonacci = custom_interfaces::action::Fibonacci;
@@ -31,11 +30,10 @@ public:
   FBActionServer() : Node("fb_action_server") {
     using namespace std::placeholders;
     // Create an action server with three callbacks
-    //   'handle_goal' and 'handle_cancel' are called by the Executor
-    //   (rclcpp::spin) 'execute' is called whenever 'handle_goal' returns by
-    //   accepting a goal
-    //    Calls to 'execute' are made in an available thread from a pool of
-    //    four.
+    // 'handle_goal' and 'handle_cancel' are called by the Executor (rclcpp::spin) 
+    // 'execute' is called whenever 'handle_goal' returns by accepting a goal
+    //  Calls to 'execute' are made in an available thread from a pool of four.
+
     m_action_server = rclcpp_action::create_server<Fibonacci>(
         this, "fibonacci",
         std::bind(&FBActionServer::handle_goal, this, _1, _2),
@@ -46,6 +44,8 @@ public:
                 "FB Action Server Created Waiting for client... ");
   }
 
+  // We start with the callback for handling new goals
+  // This code rejects sequences that are over 9000
   rclcpp_action::GoalResponse
   handle_goal(const rclcpp_action::GoalUUID &uuid,
               std::shared_ptr<const Fibonacci::Goal> goal) {
@@ -60,6 +60,8 @@ public:
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
   }
 
+  // Next up is the callback for dealing with cancellation
+  // This implementation just tells the client that it accepted the cancellation.
   rclcpp_action::CancelResponse
   handle_cancel(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
     RCLCPP_WARN(get_logger(), "Got request to cancel goal");
@@ -67,14 +69,18 @@ public:
     return rclcpp_action::CancelResponse::ACCEPT;
   }
 
+  // The last of the callbacks accepts a new goal and starts processing it:
+  // Since the execution is a long-running operation, we spawn off a thread to do the actual work and return from handle_accepted quickly.
   void handle_accepted(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
-    // this needs to return quickly to avoid blocking the executor, so spin up a
-    // new thread
+    // this needs to return quickly to avoid blocking the executor, so spin up a new thread
     using namespace std::placeholders;
     std::thread{std::bind(&FBActionServer::execute, this, _1), goal_handle}
         .detach();
   }
 
+  // All further processing and updates are done in the execute method in the new thread:
+  // This work thread processes one sequence number of the Fibonacci sequence every 0.5 second, publishing a feedback update for each step. 
+  // When it has finished processing, it marks the goal_handle as succeeded, and quits.
   void execute(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
     RCLCPP_INFO(get_logger(), "Executing goal");
     rclcpp::WallRate loop_rate(2);  // 0.5 sec
