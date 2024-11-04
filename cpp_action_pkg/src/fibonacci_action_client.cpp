@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
       action_client->async_send_goal(goal_msg, send_goal_options);
 
   if (rclcpp::spin_until_future_complete(g_node, goal_handle_future) !=
-      rclcpp::executor::FutureReturnCode::SUCCESS) {
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_ERROR(g_node->get_logger(), "send goal call failed :(");
     return 1;
   }
@@ -74,18 +74,18 @@ int main(int argc, char **argv) {
   auto wait_result = rclcpp::spin_until_future_complete(
       g_node, result_future, std::chrono::seconds(3));
 
-  if (wait_result == rclcpp::executor::FutureReturnCode::TIMEOUT) {
+  if (wait_result == rclcpp::FutureReturnCode::TIMEOUT) {
     RCLCPP_INFO(g_node->get_logger(), "canceling goal");
     // Cancel the goal since it is taking too long
     auto cancel_result_future = action_client->async_cancel_goal(goal_handle);
     if (rclcpp::spin_until_future_complete(g_node, cancel_result_future) !=
-        rclcpp::executor::FutureReturnCode::SUCCESS) {
+        rclcpp::FutureReturnCode::SUCCESS) {
       RCLCPP_ERROR(g_node->get_logger(), "failed to cancel goal");
       rclcpp::shutdown();
       return 1;
     }
     RCLCPP_INFO(g_node->get_logger(), "goal is being canceled");
-  } else if (wait_result != rclcpp::executor::FutureReturnCode::SUCCESS) {
+  } else if (wait_result != rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_ERROR(g_node->get_logger(), "failed to get result");
     rclcpp::shutdown();
     return 1;
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 
   RCLCPP_INFO(g_node->get_logger(), "Waiting for result");
   if (rclcpp::spin_until_future_complete(g_node, result_future) !=
-      rclcpp::executor::FutureReturnCode::SUCCESS) {
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_ERROR(g_node->get_logger(), "get result call failed :(");
     return 1;
   }
